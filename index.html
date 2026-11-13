@@ -93,12 +93,13 @@ const RAW=JSON.parse(document.getElementById('d').textContent);let R=[];
 function compute(navi,bls,hubl){
 const S=v=>v==null?'':String(v).trim();
 const nser=v=>{let s=S(v).toUpperCase().replace(/\s+/g,'').replace(/^[^A-Z0-9]+|[^A-Z0-9]+$/g,'');return s==='0'?'':s};
+const nserB=v=>{const s=S(v);return /\s/.test(s)||nser(s).length<5?'':nser(s)};
 const hk={};hubl.forEach(r=>hk[S(r[0])]=[S(r[1]),S(r[2])]);
 const hub=(it,lc)=>{const t=hk[lc];return !t?lc:(it[0]==='7'?t[0]:t[1])};
 const N=navi.map(r=>{const item=S(r[1]),loc=S(r[4]);let q=Math.round(parseFloat(S(r[5])||'1'));if(isNaN(q))q=1;
  return{hub:S(r[0])||hub(item,loc),item,desc:S(r[2]),sraw:S(r[3]),ser:nser(r[3]),loc,doc:S(r[6]),q}});
 const B=bls.map(r=>{const item=S(r[3]),loc=S(r[1]);
- return{hub:S(r[0])||hub(item,loc),loc,tk:S(r[2]),item,desc:S(r[4]),sraw:S(r[5]),ser:nser(r[5]),ts:S(r[6]),loai:S(r[7]),ngay:S(r[8]),doc:S(r[9])}});
+ return{hub:S(r[0])||hub(item,loc),loc,tk:S(r[2]),item,desc:S(r[4]),sraw:S(r[5]),ser:nserB(r[5]),ts:S(r[6]),loai:S(r[7]),ngay:S(r[8]),doc:S(r[9])}});
 const rows=[],add=(...a)=>{while(a.length<17)a.push('');rows.push(a)};
 const push=(m,k,v)=>{let l=m.get(k);if(!l)m.set(k,l=[]);l.push(v)};
 const Ns=new Map(),Bs=new Map();
@@ -117,14 +118,24 @@ for(const [s,bl] of Bs){const nl=Ns.get(s);if(!nl){pendB.push(...bl);continue}
   add(st,a.hub,a.item,a.desc,a.sraw,c.sraw,a.loc,c.loc,c.tk,c.ts,c.loai,c.ngay,a.doc,a.q,1,note,c.hub!==a.hub?c.hub:'')}
  for(const c of rb)add('TRUNG',c.hub,c.item,c.desc,'',c.sraw,'',c.loc,c.tk,c.ts,c.loai,c.ngay,c.doc,0,1,'Serial đã có phiếu khác – kiểm tra và hủy phiếu thừa')}
 function lcs(a,b){let p=new Array(b.length+1).fill(0);for(let i=1;i<=a.length;i++){const c=[0];for(let j=1;j<=b.length;j++)c[j]=a[i-1]===b[j-1]?p[j-1]+1:Math.max(p[j],c[j-1]);p=c}return p[b.length]}
+const aoList=[];
 const unby=new Map();N.forEach(a=>{if(a.ser&&!matched.has(a))push(unby,a.item,a)});
 for(const c of pendB){let best=null,bs=0;
- for(const a of unby.get(c.item)||[]){if(matched.has(a))continue;const s=a.ser,t=c.ser;
+ for(const a of unby.get(c.item)||[]){if(matched.has(a)||a.hub!==c.hub)continue;const s=a.ser,t=c.ser;
   let r=2*lcs(s,t)/(s.length+t.length);
   if(Math.min(s.length,t.length)>=8&&(s.endsWith(t)||t.endsWith(s)||s.includes(t)||t.includes(s)))r=Math.max(r,.95);
   if(r>bs){bs=r;best=a}}
  if(best&&bs>=.85){const a=best;matched.add(a);
   add('SAI_SERIAL',a.hub,a.item,a.desc,a.sraw,c.sraw,a.loc,c.loc,c.tk,c.ts,c.loai,c.ngay,a.doc,a.q,1,`Sửa serial phiếu thành ${a.sraw}`+(a.loc===c.loc?'':`; Loc NAVI ${a.loc} ≠ Loc phiếu ${c.loc}`))}
+ else aoList.push(c)}
+
+const addLS=(a,c)=>add('LECH_SERIAL',a.hub,a.item,a.desc,a.sraw,c.sraw,a.loc,c.loc,c.tk,c.ts,c.loai,c.ngay,a.doc,a.q,1,`Serial NAVI ${a.sraw} ≠ serial phiếu ${c.sraw} – đối chiếu và sửa serial phiếu`+(a.loc===c.loc?'':`; khác Location (NAVI ${a.loc}, phiếu ${c.loc}) – độ tin cậy thấp`),c.hub!==a.hub?c.hub:'');
+const u2=new Map();N.forEach(a=>{if(a.ser&&!matched.has(a))push(u2,a.item+'|'+a.loc+'|'+a.hub,a)});
+const rest=[];
+for(const c of aoList){const l=u2.get(c.item+'|'+c.loc+'|'+c.hub);if(l&&l.length){const a=l.shift();matched.add(a);addLS(a,c)}else rest.push(c)}
+const u3=new Map();N.forEach(a=>{if(a.ser&&!matched.has(a))push(u3,a.item+'|'+a.hub,a)});
+for(const c of rest){const l=u3.get(c.item+'|'+c.hub),a=l&&l.find(x=>!matched.has(x));
+ if(a){matched.add(a);addLS(a,c)}
  else add('PHIEU_AO',c.hub,c.item,c.desc,'',c.sraw,'',c.loc,c.tk,c.ts,c.loai,c.ngay,c.doc,0,1,'NAVI không có tồn serial này – kiểm tra rồi hủy phiếu hoặc nhập tồn NAVI')}
 for(const a of N)if(a.ser&&!matched.has(a))add('CHUA_TAO',a.hub,a.item,a.desc,a.sraw,'',a.loc,'','','','','',a.doc,a.q,0,`Tạo phiếu BH tại ${a.loc}`);
 const nq=new Map(),bq=new Map(),K=(i,l)=>i+'\u0001'+l;
@@ -141,7 +152,7 @@ for(const k of new Set([...nq.keys(),...bq.keys()])){const n=nq.get(k),l=bq.get(
 return rows}
 if(typeof module!=='undefined')module.exports=compute;
 
-const ST={OK:['Khớp','#2e7d32','Không cần xử lý'],CHUA_TAO:['Chưa tạo phiếu','#b7791f','Tạo phiếu BH'],LECH_LOC:['Lệch Location','#d9480f','Sửa vị trí phiếu / điều chuyển NAVI'],LECH_ITEM:['Lệch Item No.','#c2410c','Sửa Item'],PHIEU_AO:['Phiếu ảo','#c62828','Kiểm tra, hủy phiếu'],SAI_SERIAL:['Nghi sai serial','#1565c0','Sửa serial phiếu'],TRUNG:['Phiếu trùng','#ad1457','Hủy phiếu thừa'],THIEU_SERIAL:['Phiếu thiếu serial','#6b7280','Bổ sung serial'],KHONG_SERIAL:['Hàng không serial – lệch SL','#6a1b9a','Cân số lượng']};
+const ST={OK:['Khớp','#2e7d32','Không cần xử lý'],CHUA_TAO:['Chưa tạo phiếu','#b7791f','Tạo phiếu BH'],LECH_LOC:['Lệch Location','#d9480f','Sửa vị trí phiếu / điều chuyển NAVI'],LECH_ITEM:['Lệch Item No.','#c2410c','Sửa Item'],PHIEU_AO:['Phiếu ảo','#c62828','Kiểm tra, hủy phiếu'],LECH_SERIAL:['Lệch serial','#0e7490','Đối chiếu, sửa serial phiếu'],SAI_SERIAL:['Nghi gõ sai serial','#1565c0','Sửa serial phiếu'],TRUNG:['Phiếu trùng','#ad1457','Hủy phiếu thừa'],THIEU_SERIAL:['Phiếu thiếu serial','#6b7280','Bổ sung serial'],KHONG_SERIAL:['Hàng không serial – lệch SL','#6a1b9a','Cân số lượng']};
 const COLS=[['STT',52,'n'],['Trạng thái',190],['HUB',80],['Item No.',80],['Mô tả',260],['Serial NAVI',160],['Serial BLS',160],['Loc NAVI',72],['Loc BLS',72],['Mã phiếu BH',110],['TT phiếu',110],['Loại phiếu',120],['Ngày tạo',86],['Document No. (NAVI)',140],['SL NAVI',62,'num'],['SL phiếu',62,'num'],['Hướng xử lý',420]];
 const MAP=[null,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]; // col index -> R index (STT skipped)
 const RI=[-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
@@ -160,7 +171,7 @@ $('cnt').textContent=F.length.toLocaleString('vi')+' / '+R.length.toLocaleString
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')}
 function draw(){const sh=$('sheet'),top=Math.max(0,Math.floor(sh.scrollTop/RH)-6),n=Math.ceil(sh.clientHeight/RH)+12;
 $('vp').style.height=F.length*RH+'px';let h='';
-for(let i=top;i<Math.min(F.length,top+n);i++){const r=F[i],s=r[0],lb=(s=='LECH_LOC'||s=='LECH_ITEM')&&r[6]!==r[7],sb=s=='SAI_SERIAL';
+for(let i=top;i<Math.min(F.length,top+n);i++){const r=F[i],s=r[0],lb=(s=='LECH_LOC'||s=='LECH_ITEM'||s=='SAI_SERIAL'||s=='LECH_SERIAL')&&r[6]!==r[7],sb=s=='SAI_SERIAL'||s=='LECH_SERIAL';
 h+=`<div class="rw" style="top:${i*RH}px"><div class="n">${i+1}</div><div><span class="pill" style="--c:${ST[s][1]}">${ST[s][0]}</span></div><div>${esc(r[1])}${r[16]?' <small>('+esc(r[16])+')</small>':''}</div><div>${r[2]}</div><div title="${esc(r[3])}">${esc(r[3])}</div><div class="${sb?'bad':''}">${esc(r[4])}</div><div class="${sb?'bad':''}">${esc(r[5])}</div><div class="${lb?'bad':''}">${r[6]}</div><div class="${lb?'bad':''}">${r[7]}</div><div>${lk(r[8])}</div><div>${esc(r[9])}</div><div>${esc(r[10])}</div><div>${r[11]}</div><div>${esc(r[12])}</div><div class="num">${r[13]}</div><div class="num">${r[14]}</div><div title="${esc(r[15])}">${esc(r[15])}</div></div>`}
 $('vp').innerHTML=h}
 function sumv(){const ks=Object.keys(ST).filter(k=>k!='OK'),m={};R.forEach(r=>{const h=r[1]||'(trống)';(m[h]=m[h]||{t:0})[r[0]]=(m[h][r[0]]||0)+1;m[h].t++});
@@ -200,7 +211,7 @@ function seen(e){const a=e.target.closest('a[data-t]');if(!a)return;const t=a.da
 $('vp').addEventListener('click',seen);$('vp').addEventListener('auxclick',seen);
 /* ===== Google Sheet / tài khoản ===== */
 const CFG={GS_URL:'https://script.google.com/macros/s/AKfycbyMpBC9NkpsMTBm4c4alr-RRJ7NfhFj9zZfOA_BEUSLvk0cOkqwC9eyeVjKQWV6rLY/exec'}; // dán URL Web app của Apps Script vào đây (hoặc bấm "Kết nối" trên giao diện)
-const PRESET={all:null,prob:Object.keys(ST).filter(k=>k!='OK'),ok:['OK'],create:['CHUA_TAO'],diff:['LECH_LOC','LECH_ITEM','SAI_SERIAL'],excess:['PHIEU_AO','TRUNG'],serial:['THIEU_SERIAL'],qty:['KHONG_SERIAL']};
+const PRESET={all:null,prob:Object.keys(ST).filter(k=>k!='OK'),ok:['OK'],create:['CHUA_TAO'],diff:['LECH_LOC','LECH_ITEM','LECH_SERIAL','SAI_SERIAL'],excess:['PHIEU_AO','TRUNG'],serial:['THIEU_SERIAL'],qty:['KHONG_SERIAL']};
 function syncPreset(){const fs=$('fs');let v='custom';for(const k in PRESET){const p=PRESET[k]||Object.keys(ST);if(p.length===sel.size&&p.every(x=>sel.has(x))){v=k;break}}fs.value=v}
 $('fs').onchange=()=>{const p=PRESET[$('fs').value];if(!p)return;sel.clear();p.forEach(k=>sel.add(k));filt()};
 function gsUrl(){try{return CFG.GS_URL||localStorage.getItem('gsurl')||''}catch(e){return CFG.GS_URL}}
