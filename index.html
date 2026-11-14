@@ -143,12 +143,11 @@ for(const a of N)if(!a.ser){const k=K(a.item,a.loc);const o=nq.get(k)||{q:0,hub:
 for(const c of B)if(!c.ser){
  if(serItems.has(c.item))add('THIEU_SERIAL',c.hub,c.item,c.desc,'',c.sraw,'',c.loc,c.tk,c.ts,c.loai,c.ngay,c.doc,0,1,'Hàng quản lý serial – bổ sung serial vào phiếu');
  else push(bq,K(c.item,c.loc),c)}
-for(const k of new Set([...nq.keys(),...bq.keys()])){const n=nq.get(k),l=bq.get(k)||[],q=n?n.q:0,d=q-l.length;
- const item=n?n.item:l[0].item,loc=n?n.loc:l[0].loc;
- if(d===0){}
- add(d===0?'OK':'KHONG_SERIAL',n?n.hub:l[0].hub,item,n?n.desc:l[0].desc,'','',q?loc:'',l.length?loc:'',
-  l.slice(0,6).map(c=>c.tk).join(', ')+(l.length>6?` (+${l.length-6})`:''),l.length===1?l[0].ts:(l.length?'nhiều':''),l.length?l[0].loai:'',l.length===1?l[0].ngay:'',n?n.doc:'',q,l.length,
-  d===0?'':(d>0?`NAVI còn ${d} chưa có phiếu – tạo thêm ${d} phiếu`:`Phiếu thừa ${-d} so với tồn NAVI – kiểm tra hủy ${-d} phiếu`))}
+for(const k of new Set([...nq.keys(),...bq.keys()])){const n=nq.get(k),l=bq.get(k)||[],q=n?n.q:0;
+ const item=n?n.item:l[0].item,loc=n?n.loc:l[0].loc,hb=n?n.hub:l[0].hub,desc=n?n.desc:l[0].desc,doc=n?n.doc:'';
+ l.forEach((c,i)=>{const ok=i<q;
+  add(ok?'OK':'KHONG_SERIAL',hb,item,desc,'','',ok?loc:'',loc,c.tk,c.ts,c.loai,c.ngay,ok?doc:'',ok?1:0,1,ok?'':`Phiếu thừa so với tồn NAVI (tồn ${q} / phiếu ${l.length}) – kiểm tra, hủy phiếu thừa`)});
+ if(q>l.length)add('KHONG_SERIAL',hb,item,desc,'','',loc,'','','','','',doc,q-l.length,0,`NAVI còn ${q-l.length} chưa có phiếu – tạo thêm ${q-l.length} phiếu`)}
 return rows}
 if(typeof module!=='undefined')module.exports=compute;
 
